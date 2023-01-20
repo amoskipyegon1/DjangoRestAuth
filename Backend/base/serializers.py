@@ -1,7 +1,10 @@
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+    TokenRefreshSerializer,
+)
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
+from rest_framework.validators import UniqueValidator
 from drf_spectacular.utils import extend_schema_serializer
 
 
@@ -49,10 +52,12 @@ class ChangePasswordBodyValidationSerializer(serializers.Serializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    firstName = serializers.CharField(min_length=2, max_length=150)
     emailAddress = serializers.EmailField(
-        help_text="The email address is also going to be the username."
+        help_text="The email address is also going to be the username.",
+        validators=[UniqueValidator(queryset=User.objects.all())],
     )
+    firstName = serializers.CharField(min_length=2, max_length=150)
+    lastName = serializers.CharField(min_length=2, max_length=150, required=False)
     password = serializers.CharField(min_length=6)
 
 
@@ -62,9 +67,7 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
         return super().get_token(user)
 
     def validate(self, attrs):
-        print("------------------------------------------------")
         data = super().validate(attrs)
-        print(self.user)
         user = {
             "user": {
                 "firstName": self.user.firstName,
@@ -74,3 +77,25 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
             "refresh_token": data["refresh"],
         }
         return user
+
+
+@extend_schema_serializer(exclude_fields=["refresh"], deprecate_fields=["token"])
+class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
+    refresh_token = serializers.CharField(required=False)
+    token = serializers.CharField(
+        required=False, help_text="Deprecated. Use `refresh_token` instead."
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        del self.fields["refresh"]
+
+    def validate(self, attrs):
+        print("---------------------------------")
+        attrs["refresh"] = attrs.pop("refresh_token", attrs.get("token"))
+        data = super().validate(attrs)
+        tokens = {
+            "refresh_token": attrs.get("refresh"),
+            "access_token": data["access"],
+        }
+        return tokens
