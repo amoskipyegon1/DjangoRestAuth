@@ -1,15 +1,20 @@
 import os
-from pathlib import Path
+import environ
 import datetime
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env()
+
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-&@8&u1h64$2f%3f2m6hokyy+x_65+13w#@mu=0x^bkg^k74%1&"
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG", default=True)
 
 ALLOWED_HOSTS = []
 
@@ -52,7 +57,7 @@ ROOT_URLCONF = "backend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR / "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -142,12 +147,14 @@ SPECTACULAR_SETTINGS = {
 }
 
 ACCESS_TOKEN_LIFETIME = datetime.timedelta(
-    minutes=int(os.getenv("ACCESS_TOKEN_LIFETIME_MINUTES", 10))  # 10 minutes
+    hours=int(env.int("ACCESS_TOKEN_LIFETIME_HOURS", 24))
 )
 REFRESH_TOKEN_LIFETIME = datetime.timedelta(
-    hours=int(os.getenv("REFRESH_TOKEN_LIFETIME_HOURS", 24 * 7))  # 7 days
+    weeks=int(env.int("REFRESH_TOKEN_LIFETIME_WEEKS", 1))
 )
-
+RESET_PASSWORD_TOKEN_MAX_AGE = datetime.timedelta(
+    days=int(env.int("RESET_PASSWORD_TOKEN_MAX_AGE", 3))
+).seconds
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
@@ -171,6 +178,14 @@ SIMPLE_JWT = {
     "TOKEN_TYPE_CLAIM": "token_type",
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
 }
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD")
 
 
 # Default primary key field type

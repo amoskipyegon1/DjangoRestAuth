@@ -12,4 +12,14 @@ urlpatterns = [
         views.ChangePasswordView.as_view(),
         name="change_user_password",
     ),
+    path(
+        "api/forgot-password",
+        views.SendResetPasswordView.as_view(),
+        name="forgot_password",
+    ),
+    path(
+        "api/reset-password",
+        views.ResetPasswordView.as_view(),
+        name="reset_password",
+    ),
 ]

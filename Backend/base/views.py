@@ -1,3 +1,6 @@
+from urllib.parse import urljoin
+
+from django.conf import settings
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,16 +8,18 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from itsdangerous import URLSafeTimedSerializer
+
+from .email import send_email
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
-    TokenVerifyView,
 )
 
 from .schemas import (
     authenticate_user_schema,
     create_user_response_schema,
-    verify_user_schema,
     get_error_schema,
 )
 
@@ -23,6 +28,8 @@ from .serializers import (
     TokenRefreshWithUserSerializer,
     RegisterSerializer,
     ChangePasswordBodyValidationSerializer,
+    SendResetPasswordEmailBodyValidationSerializer,
+    ResetPasswordBodyValidationSerializer,
 )
 
 User = get_user_model()
@@ -159,6 +166,128 @@ class ChangePasswordView(APIView):
                 return Response("", status.HTTP_204_NO_CONTENT)
 
             else:
-                return Response({"error": "ERROR_INVALID_OLD_PASSWORD"})
+                return Response(
+                    {"error": "ERROR_INVALID_OLD_PASSWORD"}, status.HTTP_400_BAD_REQUEST
+                )
 
         return Response(data.errors, status.HTTP_400_BAD_REQUEST)
+
+
+class SendResetPasswordView(APIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(
+        tags=["User"],
+        request=SendResetPasswordEmailBodyValidationSerializer,
+        operation_id="send_password_reset_email",
+        description=(
+            "Sends an email containing the password reset link to the email address "
+            "of the user. This will only be done if a user is found with the given "
+            "email address. The endpoint will not fail if the email address is not "
+            "found. The link is going to the valid for {valid} hours.".format(
+                valid=int(settings.RESET_PASSWORD_TOKEN_MAX_AGE)
+            )
+        ),
+        responses={
+            204: None,
+            400: get_error_schema(
+                ["ERROR_REQUEST_BODY_VALIDATION", "ERROR_HOSTNAME_IS_NOT_ALLOWED"]
+            ),
+        },
+        auth=[],
+    )
+    def post(self, request):
+        data = SendResetPasswordEmailBodyValidationSerializer(data=request.data)
+
+        if data.is_valid():
+            post_data = data.data
+            try:
+                user = User.objects.get(emailAddress=post_data["emailAddress"])
+                base_url = post_data["base_url"]
+                if not base_url.endswith("/"):
+                    base_url += "/"
+
+                signer = get_reset_password_signer()
+                signed_user_id = signer.dumps(user.id)
+
+                reset_url = urljoin(base_url, signed_user_id)
+
+                send_email(
+                    post_data["emailAddress"],
+                    "Reset Password",
+                    "emails/send_forgotpassword_token.html",
+                    {"name": user.firstName, "link": reset_url},
+                )
+
+                return Response("", status.HTTP_200_OK)
+
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "USER_WITH_EMAIL_DOESN'T_EXIST"},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+        return Response(data.errors, status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(APIView):
+
+    permission_classes = (AllowAny,)
+
+    @extend_schema(
+        tags=["User"],
+        request=ResetPasswordBodyValidationSerializer,
+        operation_id="reset_password",
+        description=(
+            "Changes the password of a user if the reset token is valid. The "
+            "**send_password_reset_email** endpoint sends an email to the user "
+            "containing the token. That token can be used to change the password "
+            "here without providing the old password."
+        ),
+        responses={
+            204: None,
+            400: get_error_schema(
+                [
+                    "BAD_TOKEN_SIGNATURE",
+                    "EXPIRED_TOKEN_SIGNATURE",
+                    "ERROR_USER_NOT_FOUND",
+                    "ERROR_REQUEST_BODY_VALIDATION",
+                ]
+            ),
+        },
+        auth=[],
+    )
+    def post(self, request):
+        data = ResetPasswordBodyValidationSerializer(data=request.data)
+        if data.is_valid():
+            post_data = data.data
+            signer = get_reset_password_signer()
+            user_id = signer.loads(
+                post_data["token"], max_age=settings.RESET_PASSWORD_TOKEN_MAX_AGE
+            )
+
+            try:
+                user = User.objects.get(id=user_id)
+
+                user.set_password(post_data["password"])
+                user.save()
+                return Response("", status.HTTP_200_OK)
+
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "THIS_USER_DOESN'T_EXIST"},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+        return Response(data.errors, status.HTTP_400_BAD_REQUEST)
+
+
+def get_reset_password_signer():
+    """
+    Instantiates the password reset serializer that can dump and load values.
+
+    :return: The itsdangerous serializer.
+    :rtype: URLSafeTimedSerializer
+    """
+
+    return URLSafeTimedSerializer(settings.SECRET_KEY, "user-reset-password")

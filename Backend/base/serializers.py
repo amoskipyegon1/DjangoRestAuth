@@ -47,8 +47,8 @@ class SendResetPasswordEmailBodyValidationSerializer(serializers.Serializer):
 
 
 class ChangePasswordBodyValidationSerializer(serializers.Serializer):
-    old_password = serializers.CharField(min_length=6)
-    new_password = serializers.CharField(min_length=6)
+    oldPassword = serializers.CharField(min_length=6)
+    newPassword = serializers.CharField(min_length=6)
 
 
 class RegisterSerializer(serializers.Serializer):
