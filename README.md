@@ -4,6 +4,8 @@ This is a Python-Django auth system with most of the features you would need whe
 
 It will save you money and months of building the same features that are common in any web api project. It is built using Python Django Framework and Restful Api's. It is an API only project.
 
+<img src="docs/img.png" />
+
 # Features
 
 The features are mostly centred around authentication and authorisation, and they are very easily extensible.
