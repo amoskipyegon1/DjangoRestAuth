@@ -10,17 +10,17 @@ The features are mostly centred around authentication and authorisation, and the
 This project also comes with OpenAPI-based [drf-spectacular](https://drf-spectacular.readthedocs.io/en/latest/readme.html) REST API documentation, providing clear and detailed information on the project's endpoints, request and response formats, and other technical specifications.
 The features currently present are:
 
--   Sign up
+-   Register
 
--   Sign in
+-   Authenticate
 
--   Sign out
+-   JWT Token Refresh
 
 -   Show current user
 
--   Update a user account
+-   Reset Password
 
--   Delete a user account
+-   Forgot Password Request
 
 # Usage Development
 
@@ -78,8 +78,50 @@ python manage.py runserver
 -   Run python3 manage.py createsuperuser to create a superuser account
 -   Run python3 manage.py test to run the test cases. Coming soon with some tests
 
+# Folder Structure:
+
+```
+root
+├── Backend
+│   ├── backend
+│   │    ├── settings.py
+│   │    ├── urls.py
+│   │    ├── wsgi.py
+│   │    ├── asgi.py
+│   │    └── __init__.py
+│   │
+│   │
+│   ├── base
+│   │    ├── Migrations (folder)
+│   │    ├── __init__.py
+│   │    ├── admin.py
+│   │    ├── apps.py
+│   │    ├── emails.py
+│   │    ├── forms.py
+│   │    ├── schemas.py
+│   │    ├── serializers.py
+│   │    ├── tests.py
+│   │    ├── urls.py
+│   │    └── views.py
+│   │
+│   └── templates
+│   │    └── emails (folder)
+│   │       └── send_forgotpassword_token.html
+│   │
+│   ├── .env
+│   └── manage.py
+│
+│
+├── Frontend (Testing with realtime client application)
+└──  README.MD
+```
+
 # Why
 
 I have created several Django Restful apps recently. Setting the users and JWT Auth up is kinda the bottleneck for me to make the ideas simply come true within a very short time.
 
 So I made this starter Auth for myself to create apps more easily, along with some good practices that I have learned from making those apps. It's strongly opinionated, but feel free to tweak it or even maintain your own forks.
+
+```
+
+```
