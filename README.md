@@ -121,7 +121,3 @@ root
 I have created several Django Restful apps recently. Setting the users and JWT Auth up is kinda the bottleneck for me to make the ideas simply come true within a very short time.
 
 So I made this starter Auth for myself to create apps more easily, along with some good practices that I have learned from making those apps. It's strongly opinionated, but feel free to tweak it or even maintain your own forks.
-
-```
-
-```
